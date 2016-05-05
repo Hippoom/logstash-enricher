@@ -1,0 +1,11 @@
+#intelij
+.idea
+*.iml
+
+#gradle
+build
+.gradle
+
+#local
+application-dev.yml
+logs
