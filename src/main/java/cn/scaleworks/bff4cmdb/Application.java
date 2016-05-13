@@ -1,11 +1,13 @@
 package cn.scaleworks.bff4cmdb;
 
+import cn.scaleworks.bff4cmdb.zabbix.ZabbixProfile;
 import com.alibaba.fastjson.JSONObject;
 import com.vmware.vim25.mo.*;
 import io.github.hengyunabc.zabbix.api.DefaultZabbixApi;
 import io.github.hengyunabc.zabbix.api.Request;
 import io.github.hengyunabc.zabbix.api.RequestBuilder;
 import io.github.hengyunabc.zabbix.api.ZabbixApi;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +24,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.lang.String.format;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
@@ -29,11 +32,24 @@ import static java.util.stream.Collectors.toList;
 @SpringBootApplication
 public class Application {
 
-    public static final String GROUP_DB_ID = "9";
+    @Autowired
+    private ZabbixProfile zabbixProfile;
 
-    @RequestMapping(value = "/host/{name}/groups")
-    protected List<Map<String, String>> findGroupsGivenHostName(@PathVariable String name) {
-        //String url = "http://10.202.128.121/zabbix/api_jsonrpc.php";
+    @RequestMapping(value = "/host/{name}")
+    private Map<String, Object> findHostGiven(@PathVariable String name) throws MalformedURLException, RemoteException {
+
+        List<Map<String, String>> groups = findGroupsGivenHostName(name);
+        List<Map<String, String>> dependencies = findDependenciesGivenHostName(name);
+
+        return new HashMap() {
+            {
+                put("groups", groups);
+                put("dependencies", dependencies);
+            }
+        };
+    }
+
+    private List<Map<String, String>> findGroupsGivenHostName(String name) {
         ZabbixApi zabbixApi = getZabbixApi();
 
 
@@ -56,6 +72,9 @@ public class Application {
                             {
                                 put("id", g.getString("groupid"));
                                 put("name", g.getString("name"));
+                                if (g.getString("name").startsWith("[BIZ]")) {
+                                    put("type", "BIZ");
+                                }
                             }
                         }
                     )
@@ -84,17 +103,18 @@ public class Application {
     }
 
     private ZabbixApi getZabbixApi() {
-        String url = "http://192.168.11.145/zabbix/api_jsonrpc.php";
+        String url = format("%s/zabbix/api_jsonrpc.php", zabbixProfile.getBaseUrl());
         ZabbixApi zabbixApi = new DefaultZabbixApi(url);
         zabbixApi.init();
 
-        boolean login = zabbixApi.login("Admin", "zabbix");
+        boolean login = zabbixApi.login(zabbixProfile.getUsername(), zabbixProfile.getPassword());
         return zabbixApi;
     }
 
 
-    @RequestMapping(value = "/host/{name}/dependencies")
-    protected List<Map<String, String>> findDependenciesGivenHostName(@PathVariable String name) throws MalformedURLException, RemoteException {
+    private List<Map<String, String>> findDependenciesGivenHostName(String hostName) throws MalformedURLException, RemoteException {
+        Stream<Map<String, String>> databasesBelongToSameGroups = databasesBelongToSameGroups(hostName);
+
         ServiceInstance si = new ServiceInstance(new URL("https://192.168.11.105/sdk/vimService"), "administrator@thoughtworks.cn", "1qaz@WSX", true);
 
         Folder rootFolder = si.getRootFolder();
@@ -103,23 +123,11 @@ public class Application {
 
         ManagedEntity[] virtualMachines = inventoryNavigator.searchManagedEntities("VirtualMachine");
 
+
         VirtualMachine vm = stream(virtualMachines).map(v -> (VirtualMachine) v)
-                .filter(v -> name.equals(v.getGuest().getHostName()))
+                .filter(v -> hostName.equals(v.getGuest().getHostName()))
                 .findFirst().get();
-        List<Map<String, String>> groups = findGroupsGivenHostName(name);
 
-
-        Stream<Map<String, String>> vmsBelongToSameBizGroups = groups.stream().filter(g -> g.get("name").startsWith("[BIZ]"))
-                .map(g -> g.get("id"))
-                //.map(id -> new String[]{id})
-                .map(filter -> findHostsGivenGroups(filter))
-                .flatMap(h -> h.stream());
-
-        Stream<Map<String, String>> allDatabases = findHostsGivenGroups(GROUP_DB_ID).stream();
-
-        List<Map<String, String>> vms = Stream.concat(vmsBelongToSameBizGroups, allDatabases).collect(Collectors.toList());
-
-        Stream<Map<String, String>> databasesBelongToSameGroups = vms.stream().filter(i -> Collections.frequency(vms, i) > 1);
 
         Stream<Map<String, String>> datastores = stream(vm.getDatastores()).map(d -> new HashMap<String, String>() {
             {
@@ -128,6 +136,24 @@ public class Application {
         });
 
         return Stream.concat(databasesBelongToSameGroups, datastores).collect(Collectors.toSet()).stream().collect(toList());
+    }
+
+    private Stream<Map<String, String>> databasesBelongToSameGroups(String hostName) {
+        List<Map<String, String>> groups = findGroupsGivenHostName(hostName);
+
+
+        Stream<Map<String, String>> vmsBelongToSameBizGroups = groups.stream()
+                .filter(g -> g.get("name").startsWith("[BIZ]"))
+                .map(g -> g.get("id"))
+                //.map(id -> new String[]{id})
+                .map(filter -> findHostsGivenGroups(filter))
+                .flatMap(h -> h.stream());
+
+        Stream<Map<String, String>> allDatabases = findHostsGivenGroups(zabbixProfile.getDbGroupId()).stream();
+
+        List<Map<String, String>> vms = Stream.concat(vmsBelongToSameBizGroups, allDatabases).collect(Collectors.toList());
+
+        return vms.stream().filter(i -> Collections.frequency(vms, i) > 1);
     }
 
 

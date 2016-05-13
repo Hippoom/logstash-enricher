@@ -1,5 +1,6 @@
 package cn.scaleworks.bff4cmdb.vmware;
 
+import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.mo.*;
 import org.junit.Test;
 
@@ -31,6 +32,11 @@ public class VSphereApiLearningTest {
                 .findFirst().get();
 
         List<String> datastores = stream(vm.getDatastores()).map(d -> d.getName()).collect(toList());
+
+
+
+        ManagedEntity[] hostSystem = inventoryNavigator.searchManagedEntities("HostSystem");
+
 
 
         //TODO get host name by vm
