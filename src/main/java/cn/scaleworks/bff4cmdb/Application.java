@@ -2,7 +2,9 @@ package cn.scaleworks.bff4cmdb;
 
 import cn.scaleworks.bff4cmdb.zabbix.ZabbixProfile;
 import com.alibaba.fastjson.JSONObject;
-import com.vmware.vim25.mo.*;
+import com.vmware.vim25.mo.InventoryNavigator;
+import com.vmware.vim25.mo.ManagedEntity;
+import com.vmware.vim25.mo.VirtualMachine;
 import io.github.hengyunabc.zabbix.api.Request;
 import io.github.hengyunabc.zabbix.api.RequestBuilder;
 import io.github.hengyunabc.zabbix.api.ZabbixApi;
@@ -15,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.rmi.RemoteException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,6 +38,9 @@ public class Application {
 
     @Autowired
     private ZabbixApi zabbixApi;
+
+    @Autowired
+    private InventoryNavigator vmwareInventoryNavigator;
 
     @RequestMapping(value = "/host/{name}")
     private Map<String, Object> findHostGiven(@PathVariable String name) throws MalformedURLException, RemoteException {
@@ -117,13 +121,8 @@ public class Application {
     private List<Map<String, String>> findDependenciesGivenHostName(String hostName) throws MalformedURLException, RemoteException {
         Stream<Map<String, String>> databasesBelongToSameGroups = databasesBelongToSameGroups(hostName);
 
-        ServiceInstance si = new ServiceInstance(new URL("https://192.168.11.105/sdk/vimService"), "administrator@thoughtworks.cn", "1qaz@WSX", true);
 
-        Folder rootFolder = si.getRootFolder();
-
-        InventoryNavigator inventoryNavigator = new InventoryNavigator(rootFolder);
-
-        ManagedEntity[] virtualMachines = inventoryNavigator.searchManagedEntities("VirtualMachine");
+        ManagedEntity[] virtualMachines = vmwareInventoryNavigator.searchManagedEntities("VirtualMachine");
 
 
         VirtualMachine vm = stream(virtualMachines).map(v -> (VirtualMachine) v)
