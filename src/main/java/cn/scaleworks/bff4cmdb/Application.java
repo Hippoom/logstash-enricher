@@ -6,6 +6,7 @@ import com.vmware.vim25.mo.*;
 import io.github.hengyunabc.zabbix.api.Request;
 import io.github.hengyunabc.zabbix.api.RequestBuilder;
 import io.github.hengyunabc.zabbix.api.ZabbixApi;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -26,6 +27,7 @@ import java.util.stream.Stream;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
+@Slf4j
 @RestController
 @SpringBootApplication
 public class Application {
@@ -51,35 +53,39 @@ public class Application {
     }
 
     private List<Map<String, String>> findGroupsGivenHostName(String name) {
-        ZabbixApi zabbixApi = getZabbixApi();
+        try {
+            ZabbixApi zabbixApi = getZabbixApi();
 
+            JSONObject filter = new JSONObject();
+            filter.put("host", new String[]{name});
 
-        JSONObject filter = new JSONObject();
+            Request getRequest = RequestBuilder.newBuilder()
+                    .method("host.get")
+                    .paramEntry("selectGroups", "extend")//so that we get groups
+                    .paramEntry("filter", filter)
+                    .build();
+            JSONObject getResponse = zabbixApi.call(getRequest);
 
-        filter.put("host", new String[]{name});
-
-
-        Request getRequest = RequestBuilder.newBuilder()
-                .method("host.get").paramEntry("selectGroups", "extend").paramEntry("filter", filter)
-                .build();
-        JSONObject getResponse = zabbixApi.call(getRequest);
-
-        return getResponse.getJSONArray("result")
-                .getJSONObject(0).getJSONArray("groups")
-                .stream()
-                .map(g -> (JSONObject) g)
-                .map(g ->
-                        new HashMap<String, String>() {
-                            {
-                                put("id", g.getString("groupid"));
-                                put("name", g.getString("name"));
-                                if (g.getString("name").startsWith("[BIZ]")) {
-                                    put("type", "BIZ");
+            return getResponse.getJSONArray("result")
+                    .getJSONObject(0).getJSONArray("groups")
+                    .stream()
+                    .map(g -> (JSONObject) g)
+                    .map(g ->
+                            new HashMap<String, String>() {
+                                {
+                                    put("id", g.getString("groupid"));
+                                    put("name", g.getString("name"));
+                                    if (g.getString("name").startsWith("[BIZ]")) {
+                                        put("type", "BIZ");
+                                    }
                                 }
                             }
-                        }
-                    )
-                .collect(toList());
+                        )
+                    .collect(toList());
+        } catch (Exception e) {
+            log.info("Cannot get groups by host {}", name);
+            return Collections.emptyList();
+        }
     }
 
     private List<Map<String, String>> findHostsGivenGroups(String filter) {
