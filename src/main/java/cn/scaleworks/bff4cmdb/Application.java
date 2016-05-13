@@ -2,9 +2,7 @@ package cn.scaleworks.bff4cmdb;
 
 import cn.scaleworks.bff4cmdb.zabbix.ZabbixProfile;
 import com.alibaba.fastjson.JSONObject;
-import com.vmware.vim25.mo.InventoryNavigator;
-import com.vmware.vim25.mo.ManagedEntity;
-import com.vmware.vim25.mo.VirtualMachine;
+import com.vmware.vim25.mo.*;
 import io.github.hengyunabc.zabbix.api.Request;
 import io.github.hengyunabc.zabbix.api.RequestBuilder;
 import io.github.hengyunabc.zabbix.api.ZabbixApi;
@@ -12,20 +10,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.MalformedURLException;
 import java.rmi.RemoteException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 
 @Slf4j
@@ -36,24 +34,68 @@ public class Application {
     @Autowired
     private ZabbixProfile zabbixProfile;
 
+    @Lazy
     @Autowired
     private ZabbixApi zabbixApi;
 
+    @Lazy
     @Autowired
     private InventoryNavigator vmwareInventoryNavigator;
 
-    @RequestMapping(value = "/host/{name}")
-    private Map<String, Object> findHostGiven(@PathVariable String name) throws MalformedURLException, RemoteException {
+    @RequestMapping(value = "/host")
+    private Map<String, Object> findHostGiven(@RequestParam String name,
+                                              @RequestParam(required = false) String type) throws MalformedURLException, RemoteException {
 
         List<Map<String, String>> groups = findGroupsGivenHostName(name);
-        List<Map<String, String>> dependencies = findDependenciesGivenHostName(name);
+        //List<Map<String, String>> dependencies = findDependenciesGivenHostName(name);
+        List<Map<String, String>> upstreams = findUpstreamsGivenHostName(name, type);
 
         return new HashMap() {
             {
                 put("groups", groups);
-                put("dependencies", dependencies);
+                put("upstreams", upstreams);
+//                put("dependencies", dependencies);
             }
         };
+    }
+
+    private List<Map<String, String>> findUpstreamsGivenHostName(String hostName, String type) throws RemoteException {
+        if (asList("vm", "mw", "db").contains(type)) {
+            return databasesBelongToSameGroups(hostName).collect(toList());
+        } else if ("vh".equals(type)) {
+            ManagedEntity[] hostSystems = vmwareInventoryNavigator.searchManagedEntities("HostSystem");
+            return Arrays.stream(hostSystems)
+                    .map(h -> (HostSystem) h)
+                    .filter(v -> hostName.equals(v.getName()))
+                    .map(h -> {
+                        try {
+                            return Arrays.stream(h.getVms())
+                                    .map(v -> new HashMap<String, String>() {
+                                        {
+                                            put("name", v.getGuest().getHostName());
+                                        }
+                                    });
+                        } catch (RemoteException e) {
+                            log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
+                            return null; //should I, will NPE be thrown?
+                        }
+                    }).flatMap(v -> v).collect(toList());
+        } else if ("ds".equals(type)) {
+            Datastore datastore = (Datastore) vmwareInventoryNavigator.searchManagedEntity("Datastore", hostName);
+            Stream<Map<String, String>> virtualMachines = Arrays.stream(datastore.getVms()).map(v -> new HashMap<String, String>() {
+                {
+                    put("name", v.getGuest().getHostName());
+                }
+            });
+            Stream<Map<String, String>> hostSystems = Arrays.stream(datastore.getHost()).map(v -> new HashMap<String, String>() {
+                {
+                    put("name", v.getKey().getVal());
+                }
+            });
+            return Stream.concat(virtualMachines, hostSystems).collect(toList());
+        } else {
+            return emptyList();
+        }
     }
 
     private List<Map<String, String>> findGroupsGivenHostName(String name) {
@@ -88,7 +130,7 @@ public class Application {
                     .collect(toList());
         } catch (Exception e) {
             log.info("Cannot get groups by host {}", name);
-            return Collections.emptyList();
+            return emptyList();
         }
     }
 
@@ -122,7 +164,7 @@ public class Application {
         Stream<Map<String, String>> databasesBelongToSameGroups = databasesBelongToSameGroups(hostName);
 
 
-        ManagedEntity[] virtualMachines = vmwareInventoryNavigator.searchManagedEntities("VirtualMachine");
+        ManagedEntity[] virtualMachines = vmwareInventoryNavigator.searchManagedEntities("ManagedEntity");
 
 
         VirtualMachine vm = stream(virtualMachines).map(v -> (VirtualMachine) v)
@@ -146,13 +188,12 @@ public class Application {
         Stream<Map<String, String>> vmsBelongToSameBizGroups = groups.stream()
                 .filter(g -> g.get("name").startsWith("[BIZ]"))
                 .map(g -> g.get("id"))
-                //.map(id -> new String[]{id})
                 .map(filter -> findHostsGivenGroups(filter))
                 .flatMap(h -> h.stream());
 
         Stream<Map<String, String>> allDatabases = findHostsGivenGroups(zabbixProfile.getDbGroupId()).stream();
 
-        List<Map<String, String>> vms = Stream.concat(vmsBelongToSameBizGroups, allDatabases).collect(Collectors.toList());
+        List<Map<String, String>> vms = Stream.concat(vmsBelongToSameBizGroups, allDatabases).collect(toList());
 
         return vms.stream().filter(i -> Collections.frequency(vms, i) > 1);
     }
