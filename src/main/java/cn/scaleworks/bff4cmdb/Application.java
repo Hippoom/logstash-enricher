@@ -3,7 +3,6 @@ package cn.scaleworks.bff4cmdb;
 import cn.scaleworks.bff4cmdb.zabbix.ZabbixProfile;
 import com.alibaba.fastjson.JSONObject;
 import com.vmware.vim25.mo.*;
-import io.github.hengyunabc.zabbix.api.DefaultZabbixApi;
 import io.github.hengyunabc.zabbix.api.Request;
 import io.github.hengyunabc.zabbix.api.RequestBuilder;
 import io.github.hengyunabc.zabbix.api.ZabbixApi;
@@ -24,7 +23,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.lang.String.format;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
@@ -34,6 +32,9 @@ public class Application {
 
     @Autowired
     private ZabbixProfile zabbixProfile;
+
+    @Autowired
+    private ZabbixApi zabbixApi;
 
     @RequestMapping(value = "/host/{name}")
     private Map<String, Object> findHostGiven(@PathVariable String name) throws MalformedURLException, RemoteException {
@@ -103,11 +104,6 @@ public class Application {
     }
 
     private ZabbixApi getZabbixApi() {
-        String url = format("%s/zabbix/api_jsonrpc.php", zabbixProfile.getBaseUrl());
-        ZabbixApi zabbixApi = new DefaultZabbixApi(url);
-        zabbixApi.init();
-
-        boolean login = zabbixApi.login(zabbixProfile.getUsername(), zabbixProfile.getPassword());
         return zabbixApi;
     }
 
