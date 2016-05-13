@@ -2,6 +2,7 @@ package cn.scaleworks.bff4cmdb;
 
 import cn.scaleworks.bff4cmdb.zabbix.ZabbixProfile;
 import com.alibaba.fastjson.JSONObject;
+import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.mo.*;
 import io.github.hengyunabc.zabbix.api.Request;
 import io.github.hengyunabc.zabbix.api.RequestBuilder;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.PostConstruct;
 import java.net.MalformedURLException;
 import java.rmi.RemoteException;
 import java.util.*;
@@ -42,6 +44,118 @@ public class Application {
     @Autowired
     private InventoryNavigator vmwareInventoryNavigator;
 
+    private Map<String, List<String>> hostSystemUpstreams;
+    private Map<String, List<String>> virtualMachineUpstreams;
+    private Map<String, List<String>> datastoreUpstreams;
+    private List<HostSystem> hostSystems;
+    private List<VirtualMachine> virtualMachines;
+    private List<Datastore> datastores;
+
+
+    @PostConstruct
+    protected void populateDatastores() throws RemoteException {
+        hostSystems = Arrays.stream(vmwareInventoryNavigator.searchManagedEntities("HostSystem"))
+                .map(h -> (HostSystem) h).collect(toList());
+
+
+        virtualMachines = hostSystems.stream()
+                .map(h -> getVmStream(h))
+                .collect(() -> new ArrayList<>(),
+                        (list, item) -> list.addAll(item.collect(toList())),
+                        (list1, list2) -> list1.addAll(list2));
+
+        datastores = hostSystems.stream()
+                .map(h -> {
+                    try {
+                        return Arrays.stream(h.getDatastores());
+                    } catch (RemoteException e) {
+                        log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
+                        return Stream.<Datastore>empty();
+                    }
+                })
+                .collect(() -> new ArrayList<>(),
+                        (list, item) -> list.addAll(item.collect(toList())),
+                        (list1, list2) -> list1.addAll(list2));
+
+        this.hostSystemUpstreams = hostSystems.stream()
+                .map(h -> new HashMap<String, List<String>>() {
+                    {
+                        put(h.getName(), getVmStream(h)
+                                .map(v -> v.getGuest().getHostName()).collect(toList()));
+                    }
+                })
+                .collect(() -> new HashMap<>(),
+                        (map, item) -> map.putAll(item),
+                        (map1, map2) -> map1.putAll(map2));
+
+        this.virtualMachineUpstreams = virtualMachines.stream()
+                .map(h -> new HashMap<String, List<String>>() {
+                    {
+                        put(h.getName(), upstreamsOf(h));
+                    }
+                })
+                .collect(() -> new HashMap<>(),
+                        (map, item) -> map.putAll(item),
+                        (map1, map2) -> map1.putAll(map2));
+        this.datastoreUpstreams = datastores.stream()
+                .map(d -> new HashMap() {
+                    {
+                        put(d.getName(), upstreamsOf(d));
+                    }
+                })
+                .collect(() -> new HashMap<>(),
+                        (map, item) -> map.putAll(item),
+                        (map1, map2) -> map1.putAll(map2));
+    }
+
+    private List<String> upstreamsOf(Datastore d) {
+        Stream<String> hostStream = Arrays.stream(d.getHost())
+                .map(h -> getHostSystemBy(h.getKey()))
+                .filter(h -> h.isPresent())
+                .map(h -> h.get().getName());
+        Stream<String> vmStream = getVmStream(d)
+                .map(v -> v.getGuest().getHostName());
+        return Stream.concat(hostStream, vmStream).collect(toList());
+    }
+
+    private List<String> upstreamsOf(VirtualMachine h) {
+        try {
+            List<String> upstreams = Arrays.stream(h.getDatastores())
+                    .map(d -> d.getName()).collect(toList());
+            getHostSystemBy(h.getRuntime().getHost()).ifPresent(h1 -> upstreams.add(h1.getName()));
+            return upstreams;
+        } catch (RemoteException e) {
+            log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
+    }
+
+    private Optional<HostSystem> getHostSystemBy(ManagedObjectReference hostRef) {
+        return hostSystems.stream().filter(h -> h.getMOR().getVal().equals(hostRef.getVal())).findFirst();
+    }
+
+    private Stream<VirtualMachine> getVmStream(HostSystem h) {
+        try {
+            return Arrays.stream(h.getVms());
+        } catch (RemoteException e) {
+            log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
+            return Stream.empty();
+        }
+    }
+
+    private Stream<VirtualMachine> getVmStream(Datastore h) {
+        return Arrays.stream(h.getVms());
+    }
+
+    private List<String> getVmHostNames(HostSystem h) {
+        try {
+            return Arrays.stream(h.getVms()).map(v -> v.getGuest().getHostName()).collect(toList());
+        } catch (RemoteException e) {
+            log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
+            return null; //should I, will NPE be thrown?
+        }
+    }
+
     @RequestMapping(value = "/host")
     private Map<String, Object> findHostGiven(@RequestParam String name,
                                               @RequestParam(required = false) String type) throws MalformedURLException, RemoteException {
@@ -49,6 +163,7 @@ public class Application {
         List<Map<String, String>> groups = findGroupsGivenHostName(name);
         //List<Map<String, String>> dependencies = findDependenciesGivenHostName(name);
         List<Map<String, String>> upstreams = findUpstreamsGivenHostName(name, type);
+
 
         return new HashMap() {
             {
@@ -60,39 +175,29 @@ public class Application {
     }
 
     private List<Map<String, String>> findUpstreamsGivenHostName(String hostName, String type) throws RemoteException {
-        if (asList("vm", "mw", "db").contains(type)) {
+        if (asList("mw", "db").contains(type)) {
             return databasesBelongToSameGroups(hostName).collect(toList());
-        } else if ("vh".equals(type)) {
-            ManagedEntity[] hostSystems = vmwareInventoryNavigator.searchManagedEntities("HostSystem");
-            return Arrays.stream(hostSystems)
-                    .map(h -> (HostSystem) h)
-                    .filter(v -> hostName.equals(v.getName()))
-                    .map(h -> {
-                        try {
-                            return Arrays.stream(h.getVms())
-                                    .map(v -> new HashMap<String, String>() {
-                                        {
-                                            put("name", v.getGuest().getHostName());
-                                        }
-                                    });
-                        } catch (RemoteException e) {
-                            log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
-                            return null; //should I, will NPE be thrown?
+        } else if ("vm".equals(type)) {
+            return virtualMachineUpstreams.get(hostName).stream()
+                    .map(d -> new HashMap<String, String>() {
+                        {
+                            put("name", d);
                         }
-                    }).flatMap(v -> v).collect(toList());
+                    }).collect(toList());
+        } else if ("vh".equals(type)) {
+            return hostSystemUpstreams.get(hostName).stream()
+                    .map(d -> new HashMap<String, String>() {
+                        {
+                            put("name", d);
+                        }
+                    }).collect(toList());
         } else if ("ds".equals(type)) {
-            Datastore datastore = (Datastore) vmwareInventoryNavigator.searchManagedEntity("Datastore", hostName);
-            Stream<Map<String, String>> virtualMachines = Arrays.stream(datastore.getVms()).map(v -> new HashMap<String, String>() {
-                {
-                    put("name", v.getGuest().getHostName());
-                }
-            });
-            Stream<Map<String, String>> hostSystems = Arrays.stream(datastore.getHost()).map(v -> new HashMap<String, String>() {
-                {
-                    put("name", v.getKey().getVal());
-                }
-            });
-            return Stream.concat(virtualMachines, hostSystems).collect(toList());
+            return datastoreUpstreams.get(hostName).stream()
+                    .map(d -> new HashMap<String, String>() {
+                        {
+                            put("name", d);
+                        }
+                    }).collect(toList());
         } else {
             return emptyList();
         }
