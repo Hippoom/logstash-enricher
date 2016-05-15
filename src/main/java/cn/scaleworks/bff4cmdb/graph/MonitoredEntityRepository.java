@@ -6,6 +6,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toList;
 
 @Component
 public class MonitoredEntityRepository {
@@ -14,5 +17,19 @@ public class MonitoredEntityRepository {
 
     public Map<String, JSONObject> findAll() {
         return entities;
+    }
+
+    public JSONObject find(String name) {
+        JSONObject entity = entities.get(name);
+        Stream<String> upstreams = entities.values().stream()
+                .filter(e -> e.get("dependsOn") != null)
+                .filter(e -> {
+                    Map<String, String> dependsOn = (Map<String, String>) e.get("dependsOn");
+                    return dependsOn.values().stream()
+                            .filter(n -> n.equals(name)).count() > 0;
+                })
+                .map(u -> (String) u.get("id"));
+        entity.put("upstreams", upstreams.collect(toList()));
+        return entity;
     }
 }

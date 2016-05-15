@@ -162,22 +162,9 @@ public class Application {
         }
     }
 
-    @RequestMapping(value = "/host")
-    private Map<String, Object> findHostGiven(@RequestParam String name,
-                                              @RequestParam(required = false) String type) throws MalformedURLException, RemoteException {
-
-        List<Map<String, String>> groups = findGroupsGivenHostName(name);
-        //List<Map<String, String>> dependencies = findDependenciesGivenHostName(name);
-        List<Map<String, String>> upstreams = findUpstreamsGivenHostName(name, type);
-
-
-        return new HashMap() {
-            {
-                put("groups", groups);
-                put("upstreams", upstreams);
-//                put("dependencies", dependencies);
-            }
-        };
+    @RequestMapping(value = "/api/monitored-entities/_search")
+    private JSONObject search(@RequestParam String name) throws MalformedURLException, RemoteException {
+        return monitoredEntityRepository.find(name);
     }
 
     @RequestMapping(value = "/api/graph")
