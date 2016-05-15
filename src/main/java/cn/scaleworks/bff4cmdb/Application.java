@@ -53,8 +53,6 @@ public class Application {
     private List<VirtualMachine> virtualMachines;
     private List<Datastore> datastores;
 
-    @Autowired
-    private MonitoredEntityRepository monitoredEntityRepository;
 
 
     //@Lazy
@@ -160,44 +158,6 @@ public class Application {
             log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
             return null; //should I, will NPE be thrown?
         }
-    }
-
-    @RequestMapping(value = "/api/monitored-entities/_search")
-    private JSONObject search(@RequestParam String name) throws MalformedURLException, RemoteException {
-        return monitoredEntityRepository.find(name);
-    }
-
-    @RequestMapping(value = "/api/graph")
-    protected JSONObject graph() {
-
-        Map<String, JSONObject> entities = monitoredEntityRepository.findAll();
-
-        JSONObject graph = new JSONObject();
-
-        JSONArray nodes = new JSONArray();
-        nodes.addAll(entities.entrySet().stream()
-                .map(e -> e.getValue())
-                .collect(toList()));
-
-        List<JSONObject> links = entities.entrySet().stream()
-                .filter(e -> e.getValue().get("dependsOn") != null)
-                .map(e -> {
-                    Map<String, String> dependsOn = (Map<String, String>) e.getValue().get("dependsOn");
-                    return dependsOn.values().stream()
-                            .map(d -> {
-                                JSONObject link = new JSONObject();
-                                link.put("source", e.getKey());
-                                link.put("target", d);
-                                return link;
-                            });
-                })
-                .flatMap(l -> l)
-                .collect(toList());
-
-
-        graph.put("nodes", nodes);
-        graph.put("links", links);
-        return graph;
     }
 
     private List<Map<String, String>> findUpstreamsGivenHostName(String hostName, String type) throws RemoteException {
