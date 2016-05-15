@@ -1,12 +1,14 @@
 package cn.scaleworks.bff4cmdb;
 
 import cn.scaleworks.bff4cmdb.zabbix.ZabbixProfile;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.mo.*;
 import io.github.hengyunabc.zabbix.api.Request;
 import io.github.hengyunabc.zabbix.api.RequestBuilder;
 import io.github.hengyunabc.zabbix.api.ZabbixApi;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
@@ -16,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.PostConstruct;
 import java.net.MalformedURLException;
 import java.rmi.RemoteException;
 import java.util.*;
@@ -27,6 +28,7 @@ import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Stream.concat;
 
 @Slf4j
 @RestController
@@ -51,8 +53,12 @@ public class Application {
     private List<VirtualMachine> virtualMachines;
     private List<Datastore> datastores;
 
+    @Setter
+    private Map<String, JSONObject> entities = new HashMap();
 
-    @PostConstruct
+
+    //@Lazy
+    //@PostConstruct
     protected void populateDatastores() throws RemoteException {
         hostSystems = Arrays.stream(vmwareInventoryNavigator.searchManagedEntities("HostSystem"))
                 .map(h -> (HostSystem) h).collect(toList());
@@ -115,7 +121,7 @@ public class Application {
                 .map(h -> h.get().getName());
         Stream<String> vmStream = getVmStream(d)
                 .map(v -> v.getGuest().getHostName());
-        return Stream.concat(hostStream, vmStream).collect(toList());
+        return concat(hostStream, vmStream).collect(toList());
     }
 
     private List<String> upstreamsOf(VirtualMachine h) {
@@ -172,6 +178,36 @@ public class Application {
 //                put("dependencies", dependencies);
             }
         };
+    }
+
+    @RequestMapping(value = "/api/graph")
+    protected JSONObject graph() {
+        JSONObject graph = new JSONObject();
+
+        JSONArray nodes = new JSONArray();
+        nodes.addAll(entities.entrySet().stream()
+                .map(e -> e.getValue())
+                .collect(toList()));
+
+        List<JSONObject> links = entities.entrySet().stream()
+                .filter(e -> e.getValue().get("dependsOn") != null)
+                .map(e -> {
+                    Map<String, String> dependsOn = (Map<String, String>) e.getValue().get("dependsOn");
+                    return dependsOn.values().stream()
+                            .map(d -> {
+                                JSONObject link = new JSONObject();
+                                link.put("source", e.getKey());
+                                link.put("target", d);
+                                return link;
+                            });
+                })
+                .flatMap(l -> l)
+                .collect(toList());
+
+
+        graph.put("nodes", nodes);
+        graph.put("links", links);
+        return graph;
     }
 
     private List<Map<String, String>> findUpstreamsGivenHostName(String hostName, String type) throws RemoteException {
@@ -283,7 +319,7 @@ public class Application {
             }
         });
 
-        return Stream.concat(databasesBelongToSameGroups, datastores).collect(Collectors.toSet()).stream().collect(toList());
+        return concat(databasesBelongToSameGroups, datastores).collect(Collectors.toSet()).stream().collect(toList());
     }
 
     private Stream<Map<String, String>> databasesBelongToSameGroups(String hostName) {
@@ -298,11 +334,10 @@ public class Application {
 
         Stream<Map<String, String>> allDatabases = findHostsGivenGroups(zabbixProfile.getDbGroupId()).stream();
 
-        List<Map<String, String>> vms = Stream.concat(vmsBelongToSameBizGroups, allDatabases).collect(toList());
+        List<Map<String, String>> vms = concat(vmsBelongToSameBizGroups, allDatabases).collect(toList());
 
         return vms.stream().filter(i -> Collections.frequency(vms, i) > 1);
     }
-
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
