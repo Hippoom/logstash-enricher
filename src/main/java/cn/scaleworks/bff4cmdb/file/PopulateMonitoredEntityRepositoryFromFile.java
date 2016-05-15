@@ -3,12 +3,11 @@ package cn.scaleworks.bff4cmdb.file;
 import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
 import com.alibaba.fastjson.JSONObject;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
 import java.util.Map;
 
 @Configuration
@@ -19,11 +18,10 @@ public class PopulateMonitoredEntityRepositoryFromFile {
 
     private Map<String, JSONObject> entities;
 
-    @Autowired
-    private MonitoredEntityRepository monitoredEntityRepository;
-
-    @PostConstruct
-    protected void populate() {
+    @Bean
+    protected MonitoredEntityRepository monitoredEntityRepository() {
+        MonitoredEntityRepository monitoredEntityRepository = new MonitoredEntityRepository();
         monitoredEntityRepository.setEntities(entities);
+        return monitoredEntityRepository;
     }
 }
