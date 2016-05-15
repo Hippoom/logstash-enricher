@@ -1,5 +1,6 @@
 package cn.scaleworks.bff4cmdb;
 
+import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
 import cn.scaleworks.bff4cmdb.zabbix.ZabbixProfile;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -8,7 +9,6 @@ import com.vmware.vim25.mo.*;
 import io.github.hengyunabc.zabbix.api.Request;
 import io.github.hengyunabc.zabbix.api.RequestBuilder;
 import io.github.hengyunabc.zabbix.api.ZabbixApi;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
@@ -53,8 +53,8 @@ public class Application {
     private List<VirtualMachine> virtualMachines;
     private List<Datastore> datastores;
 
-    @Setter
-    private Map<String, JSONObject> entities = new HashMap();
+    @Autowired
+    private MonitoredEntityRepository monitoredEntityRepository;
 
 
     //@Lazy
@@ -182,6 +182,9 @@ public class Application {
 
     @RequestMapping(value = "/api/graph")
     protected JSONObject graph() {
+
+        Map<String, JSONObject> entities = monitoredEntityRepository.findAll();
+
         JSONObject graph = new JSONObject();
 
         JSONArray nodes = new JSONArray();
