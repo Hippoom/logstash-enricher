@@ -16,18 +16,19 @@ import java.util.Map;
 import static java.util.stream.Collectors.toList;
 
 @RestController
+@RequestMapping(value = "/api/monitored-entities")
 public class MonitoredEntityResource {
 
     @Autowired
     private MonitoredEntityRepository monitoredEntityRepository;
 
 
-    @RequestMapping(value = "/api/monitored-entities/_search")
+    @RequestMapping(value = "/_search")
     protected JSONObject search(@RequestParam String name) throws MalformedURLException, RemoteException {
         return monitoredEntityRepository.find(name);
     }
 
-    @RequestMapping(value = "/api/graph")
+    @RequestMapping(value = "/_graph")
     protected JSONObject graph() {
 
         Map<String, JSONObject> entities = monitoredEntityRepository.findAll();
