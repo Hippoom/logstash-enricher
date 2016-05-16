@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.Setter;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -29,5 +30,21 @@ public class MonitoredEntityRepository {
                 .map(u -> (String) u.get("id"));
         entity.put("upstreams", upstreams.collect(toList()));
         return entity;
+    }
+
+    public void saveOrUpdate(List<Map> entities) {
+        entities.stream()
+                .map(e -> {
+                    JSONObject object = new JSONObject();
+                    object.put("id", e.get("id"));
+                    object.put("host", e.get("host"));
+                    object.put("text", e.get("text"));
+                    object.put("app", e.get("app"));
+                    object.put("dependsOn", e.get("dependsOn"));
+                    object.put("groups", e.get("groups"));
+                    return object;
+                }).forEach(e -> {
+            this.entities.put((String) e.get("id"), e);
+        });
     }
 }
