@@ -36,7 +36,7 @@
 
     var color = d3.scale.category20();
 
-    d3.json("/api/graph", function (error, graph) {
+    d3.json("/api/monitored-entities/_graph", function (error, graph) {
         if (error) throw error;
 
         var nodeById = d3.map();

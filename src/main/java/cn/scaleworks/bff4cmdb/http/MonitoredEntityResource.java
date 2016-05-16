@@ -43,8 +43,8 @@ public class MonitoredEntityResource {
         List<JSONObject> links = entities.entrySet().stream()
                 .filter(e -> e.getValue().get("dependsOn") != null)
                 .map(e -> {
-                    Map<String, String> dependsOn = (Map<String, String>) e.getValue().get("dependsOn");
-                    return dependsOn.values().stream()
+                    List<String> dependsOn = (List<String>) e.getValue().get("dependsOn");
+                    return dependsOn.stream()
                             .map(d -> {
                                 JSONObject link = new JSONObject();
                                 link.put("source", e.getKey());

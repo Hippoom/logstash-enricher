@@ -1,6 +1,7 @@
 package cn.scaleworks.bff4cmdb.zabbix;
 
 import cn.scaleworks.bff4cmdb.graph.MonitoredGroupRepository;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.github.hengyunabc.zabbix.api.DefaultZabbixApi;
 import io.github.hengyunabc.zabbix.api.Request;
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,21 +70,23 @@ public class ZabbixMonitoredGroupRepository implements MonitoredGroupRepository 
                 .build();
         JSONObject getResponse = zabbixApi.call(getRequest);
 
-        return getResponse.getJSONArray("result")
-                .getJSONObject(0).getJSONArray("groups")
-                .stream()
-                .map(g -> (JSONObject) g)
-                .map(g -> {
-                            JSONObject group = new JSONObject();
-                            group.put("name", g.getString("name"));
-                            if (g.getString("name").startsWith("[BIZ]")) {
-                                group.put("type", "BIZ");
+        JSONArray hostsMaybe = getResponse.getJSONArray("result");
+        return hostsMaybe.isEmpty() ? Collections.emptyList() :
+                hostsMaybe
+                        .getJSONObject(0).getJSONArray("groups")
+                        .stream()
+                        .map(g -> (JSONObject) g)
+                        .map(g -> {
+                                    JSONObject group = new JSONObject();
+                                    group.put("name", g.getString("name"));
+                                    if (g.getString("name").startsWith("[BIZ]")) {
+                                        group.put("type", "BIZ");
 
-                            }
-                            return group;
-                        }
-                    )
-                .collect(toList());
+                                    }
+                                    return group;
+                                }
+                            )
+                        .collect(toList());
 
     }
 }
