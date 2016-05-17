@@ -1,5 +1,6 @@
 package cn.scaleworks.bff4cmdb.ansible;
 
+import cn.scaleworks.bff4cmdb.graph.MonitoredEntity;
 import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
 import cn.scaleworks.bff4cmdb.graph.MonitoredGroupRepository;
 import com.alibaba.fastjson.JSONObject;
@@ -19,13 +20,16 @@ import org.springframework.context.annotation.Configuration;
 import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static com.jayway.jsonpath.Criteria.where;
 import static com.jayway.jsonpath.Filter.filter;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 @Configuration
 @ConfigurationProperties("ansible")
@@ -48,7 +52,7 @@ public class AnsibleConfiguration implements ApplicationContextAware {
 
         String[] dumps = directory.list();
 
-        Stream<Map> applicationLevelEntityStream = Arrays.stream(dumps)
+        Stream<MonitoredEntity> applicationLevelEntityStream = Arrays.stream(dumps)
                 .filter(d -> !d.startsWith("."))
                 .map(d -> {
                     try {
@@ -79,46 +83,41 @@ public class AnsibleConfiguration implements ApplicationContextAware {
 
                     return entities.stream()
                             .map(e -> {
-                                Map entity = new HashMap();
-                                entity.put("id", e);
-                                entity.put("host", vm);
-                                entity.put("text", format("%s:%s", e, vm));
-                                entity.put("type", e.split("_")[0]);
-                                entity.put("dependsOn", new ArrayList<String>() {
-                                    {
-                                        add(vm);
-                                    }
-                                });
+                                String id = e;
+                                String host = vm;
+                                String type = e.split("_")[0];
+                                String text = format("%s:%s", e, vm);
+                                MonitoredEntity entity = new MonitoredEntity(id, host, type, text);
+                                entity.assignDependency(vm);
                                 List<JSONObject> groups = monitoredGroupRepository.findGroupsByHostName(vm);
-                                entity.put("groups", groups.stream().map(g -> (String) g.get("name")).collect(toList()));
+                                entity.assignGroups(groups.stream().map(g -> (String) g.get("name")).collect(toSet()));
                                 return entity;
                             });
                 })
                 .flatMap(e -> e);
 
 
-        List<Map> entities = applicationLevelEntityStream.collect(toList());
+        List<MonitoredEntity> entities = applicationLevelEntityStream.collect(toList());
 
-        List<Map> databases = entities.stream()
-                .filter(app -> app.get("type").equals("db"))
+        List<MonitoredEntity> databases = entities.stream()
+                .filter(app -> app.getType().equals("db"))
                 .collect(toList());
 
 
-        Stream<Map> appStream = entities.stream()
+        Stream<MonitoredEntity> appStream = entities.stream()
                 //.filter(app -> app.get("type").equals("app"))
                 .map(e -> {
-                    List<String> groups = (List<String>) e.get("groups");
-                    List<String> dependsOn = (List<String>) e.get("dependsOn");
+                    Set<String> groups = e.getGroups();
+                    Set<String> dependsOn = e.getDependsOn();
 
                     List<String> dbBelongToSameBizGroup = groups.stream()
                             .filter(g -> g.startsWith("[BIZ]"))
                             .map(g -> {
                                 return databases.stream()
                                         .filter(db -> {
-                                            List<String> groups1 = (List<String>) db.get("groups");
-                                            return groups1.contains(g);
+                                            return db.belongToGroup(g);
                                         })
-                                        .map(db -> (String) db.get("id")).collect(toList());
+                                        .map(db -> db.getId()).collect(toList());
                             })
                             .flatMap(db -> db.stream())
                             .collect(toList());

@@ -1,8 +1,8 @@
 package cn.scaleworks.bff4cmdb.vmware;
 
+import cn.scaleworks.bff4cmdb.graph.MonitoredEntity;
 import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
 import cn.scaleworks.bff4cmdb.graph.MonitoredGroupRepository;
-import com.alibaba.fastjson.JSONObject;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.mo.*;
 import lombok.Data;
@@ -18,10 +18,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.rmi.RemoteException;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.String.format;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 @Configuration
 @ConditionalOnProperty("vmware.enabled")
@@ -54,79 +55,68 @@ public class VmwareConfiguration {
 
     @Lazy
     @Bean
-    protected MonitoredEntityRepository monitoredEntityRepository(InventoryNavigator inventoryNavigator) throws RemoteException {
-        List<HostSystem> hostSystems = Arrays.stream(inventoryNavigator.searchManagedEntities("HostSystem"))
-                .map(h -> (HostSystem) h).collect(toList());
+    protected MonitoredEntityRepository monitoredEntityRepository() throws RemoteException, MalformedURLException {
+        ManagedEntityHolder managedEntityHolder = vmwareManagedEntityHolder();
+
+        List<HostSystem> hostSystems = managedEntityHolder.getHostSystems();
 
 
-        List<VirtualMachine> virtualMachines = hostSystems.stream()
-                .map(h -> getVmStream(h))
-                .collect(() -> new ArrayList<>(),
-                        (list, item) -> list.addAll(item.collect(toList())),
-                        (list1, list2) -> list1.addAll(list2));
+        List<VirtualMachine> virtualMachines = managedEntityHolder.getVirtualMachines();
 
-        List<Datastore> datastores = hostSystems.stream()
-                .map(h -> {
-                    try {
-                        return Arrays.stream(h.getDatastores());
-                    } catch (RemoteException e) {
-                        log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
-                        return Stream.<Datastore>empty();
-                    }
-                })
-                .collect(() -> new ArrayList<>(),
-                        (list, item) -> list.addAll(item.collect(toList())),
-                        (list1, list2) -> list1.addAll(list2));
+        List<Datastore> datastores = managedEntityHolder.getDatastores();
 
 
-        Stream<JSONObject> virtualMachineStream = virtualMachines.stream()
+        Stream<MonitoredEntity> virtualMachineStream = virtualMachines.stream()
                 .map(v -> {
-                    JSONObject virtualMachine = new JSONObject();
                     String id = v.getGuest().getHostName();
-                    virtualMachine.put("id", id);
-                    virtualMachine.put("type", "vm");
-                    virtualMachine.put("text", format("%s:%s", id, v.getGuest().getIpAddress()));
-                    try {
-                        Stream<String> datastoreStream = Arrays.stream(v.getDatastores()).map(d -> d.getName());
-                        List<String> dependsOn = datastoreStream.collect(toList());
-                        getHostBy(v, hostSystems).ifPresent(h -> dependsOn.add(h.getName()));
-                        virtualMachine.put("dependsOn", dependsOn);
-                        virtualMachine.put("groups", monitoredGroupRepository.findGroupsByHostName(id).stream()
-                                .map(g -> g.get("name")));
-                    } catch (RemoteException e) {
-                        log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
-                    }
+                    String host = id;
+                    String text = format("%s:%s", id, v.getGuest().getIpAddress());
+
+                    MonitoredEntity virtualMachine = new MonitoredEntity(id, host, "vm", text);
+
+                    Set<String> dependsOn = managedEntityHolder.getDsStream(v)
+                            .map(d -> d.getName())
+                            .collect(toSet());
+
+                    getHostBy(v, hostSystems).ifPresent(h -> dependsOn.add(h.getName()));
+
+                    virtualMachine.assignDependencies(dependsOn);
+                    virtualMachine.assignGroups(monitoredGroupRepository.findGroupsByHostName(id).stream()
+                            .map(g -> (String) g.get("name")).collect(Collectors.toSet()));
                     return virtualMachine;
                 });
 
-        Stream<JSONObject> hostSystemStream = hostSystems.stream()
+        Stream<MonitoredEntity> hostSystemStream = hostSystems.stream()
                 .map(h -> {
-                    JSONObject hostSystem = new JSONObject();
-                    hostSystem.put("id", h.getName());
-                    hostSystem.put("type", "vh");
-                    hostSystem.put("text", h.getName());
-                    try {
-                        hostSystem.put("dependsOn", Arrays.stream(h.getDatastores()).map(d -> d.getName()).collect(toList()));
-                    } catch (RemoteException e) {
-                        log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
-                    }
+                    String id = h.getName();
+                    String host = id;
+                    String text = id;
+
+                    MonitoredEntity hostSystem = new MonitoredEntity(id, host, "vh", text);
+                    hostSystem.assignDependencies(managedEntityHolder.getDsStream(h)
+                            .map(d -> d.getName())
+                            .collect(toSet()));
+                    // usually we don't categorize vh into groups
                     return hostSystem;
                 });
 
-        Stream<JSONObject> datastoreStream = datastores.stream()
+        Stream<MonitoredEntity> datastoreStream = datastores.stream()
                 .map(ds -> {
-                    JSONObject datastore = new JSONObject();
-                    datastore.put("id", ds.getName());
-                    datastore.put("type", "ds");
-                    datastore.put("text", ds.getName());
+                    String id = ds.getName();
+                    String host = id;
+                    String text = id;
+
+                    MonitoredEntity datastore = new MonitoredEntity(id, host, "ds", text);
+                    // usually datastore does not have dependencies
+                    // usually we don't categorize vh into groups
                     return datastore;
                 });
 
-        Stream<JSONObject> entityStream = Stream.concat(Stream.concat(virtualMachineStream, hostSystemStream), datastoreStream);
+        Stream<MonitoredEntity> entityStream = Stream.concat(Stream.concat(virtualMachineStream, hostSystemStream), datastoreStream);
 
-        Map<String, JSONObject> entities = new HashMap();
+        Map<String, MonitoredEntity> entities = new HashMap();
         entityStream.forEach(e -> {
-            entities.put((String) e.get("id"), e);
+            entities.put(e.getId(), e);
         });
         MonitoredEntityRepository monitoredEntityRepository = new MonitoredEntityRepository();
         monitoredEntityRepository.setEntities(entities);
@@ -142,13 +132,5 @@ public class VmwareConfiguration {
         return hostSystems.stream().filter(h -> h.getMOR().getVal().equals(hostRef.getVal())).findFirst();
     }
 
-    private Stream<VirtualMachine> getVmStream(HostSystem h) {
-        try {
-            return Arrays.stream(h.getVms());
-        } catch (RemoteException e) {
-            log.warn("Cannot connect to vmware due to {}", e.getMessage(), e);
-            return Stream.empty();
-        }
-    }
 
 }

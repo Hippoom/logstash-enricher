@@ -1,7 +1,7 @@
 package cn.scaleworks.bff4cmdb.file;
 
+import cn.scaleworks.bff4cmdb.graph.MonitoredEntity;
 import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
-import com.alibaba.fastjson.JSONObject;
 import lombok.Data;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -16,7 +16,7 @@ import java.util.Map;
 @Data//otherwise we cannot get properties injected
 public class PopulateMonitoredEntityRepositoryFromFile {
 
-    private Map<String, JSONObject> entities;
+    private Map<String, MonitoredEntity> entities;
 
     @Bean
     protected MonitoredEntityRepository monitoredEntityRepository() {

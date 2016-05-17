@@ -1,5 +1,6 @@
 package cn.scaleworks.bff4cmdb.http;
 
+import cn.scaleworks.bff4cmdb.graph.MonitoredEntity;
 import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -8,10 +9,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.net.MalformedURLException;
-import java.rmi.RemoteException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -24,14 +26,14 @@ public class MonitoredEntityResource {
 
 
     @RequestMapping(value = "/_search")
-    protected JSONObject search(@RequestParam String name) throws MalformedURLException, RemoteException {
-        return monitoredEntityRepository.find(name);
+    protected MonitoredEntity search(@RequestParam String id) {
+        return monitoredEntityRepository.findById(id);
     }
 
     @RequestMapping(value = "/_graph")
     protected JSONObject graph() {
 
-        Map<String, JSONObject> entities = monitoredEntityRepository.findAll();
+        Map<String, MonitoredEntity> entities = monitoredEntityRepository.findAll();
 
         JSONObject graph = new JSONObject();
 
@@ -41,17 +43,13 @@ public class MonitoredEntityResource {
                 .collect(toList()));
 
         List<JSONObject> links = entities.entrySet().stream()
-                .filter(e -> e.getValue().get("dependsOn") != null)
-                .map(e -> {
-                    List<String> dependsOn = (List<String>) e.getValue().get("dependsOn");
-                    return dependsOn.stream()
-                            .map(d -> {
-                                JSONObject link = new JSONObject();
-                                link.put("source", e.getKey());
-                                link.put("target", d);
-                                return link;
-                            });
-                })
+                .map(e -> ((Set<String>) e.getValue().getDependsOn()).stream()
+                        .map(d -> {
+                            JSONObject link = new JSONObject();
+                            link.put("source", e.getKey());
+                            link.put("target", d);
+                            return link;
+                        }))
                 .flatMap(l -> l)
                 .collect(toList());
 

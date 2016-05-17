@@ -1,50 +1,40 @@
 package cn.scaleworks.bff4cmdb.graph;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.Setter;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 public class MonitoredEntityRepository {
     @Setter
-    private Map<String, JSONObject> entities = new HashMap();
+    private Map<String, MonitoredEntity> entities = new HashMap();
 
-    public Map<String, JSONObject> findAll() {
+    public Map<String, MonitoredEntity> findAll() {
         return entities;
     }
 
-    public JSONObject find(String name) {
-        JSONObject entity = entities.get(name);
+    public MonitoredEntity findById(String id) {
+        MonitoredEntity entity = entities.get(id);
         Stream<String> upstreams = entities.values().stream()
-                .filter(e -> e.get("dependsOn") != null)
                 .filter(e -> {
-                    Map<String, String> dependsOn = (Map<String, String>) e.get("dependsOn");
-                    return dependsOn.values().stream()
-                            .filter(n -> n.equals(name)).count() > 0;
+                    Set<String> dependsOn = e.getDependsOn();
+                    return dependsOn.stream()
+                            .filter(n -> n.equals(id)).count() > 0;
                 })
-                .map(u -> (String) u.get("id"));
-        entity.put("upstreams", upstreams.collect(toList()));
+                .map(u -> u.getId());
+        entity.markAsDependencyOf(upstreams.collect(toSet()));
         return entity;
     }
 
-    public void saveOrUpdate(List<Map> entities) {
+    public void saveOrUpdate(List<MonitoredEntity> entities) {
         entities.stream()
-                .map(e -> {
-                    JSONObject object = new JSONObject();
-                    object.put("id", e.get("id"));
-                    object.put("host", e.get("host"));
-                    object.put("text", e.get("text"));
-                    object.put("type", e.get("type"));
-                    object.put("dependsOn", e.get("dependsOn"));
-                    object.put("groups", e.get("groups"));
-                    return object;
-                }).forEach(e -> {
-            this.entities.put((String) e.get("id"), e);
-        });
+                .forEach(e -> {
+                    this.entities.put(e.getId(), e);
+                });
     }
 }
