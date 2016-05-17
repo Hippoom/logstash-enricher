@@ -34,11 +34,9 @@ public class VmwareConfiguration {
     private String password;
     private String username;
 
-    @Lazy
     @Autowired
     private MonitoredGroupRepository monitoredGroupRepository;
 
-    @Lazy
     @Bean
     protected InventoryNavigator vmwareInventoryNavigator() throws RemoteException, MalformedURLException {
         ServiceInstance si = new ServiceInstance(new URL(format("%s/sdk/vimService", baseUrl)),
@@ -47,6 +45,11 @@ public class VmwareConfiguration {
         Folder rootFolder = si.getRootFolder();
 
         return new InventoryNavigator(rootFolder);
+    }
+
+    @Bean
+    protected ManagedEntityHolder vmwareManagedEntityHolder() throws MalformedURLException, RemoteException {
+        return new ManagedEntityHolder(vmwareInventoryNavigator());
     }
 
     @Lazy
@@ -147,45 +150,5 @@ public class VmwareConfiguration {
             return Stream.empty();
         }
     }
-
-//    private Stream<Map<String, String>> databasesBelongToSameGroups(String hostName) {
-//        List<Map<String, String>> groups = findGroupsGivenHostName(hostName);
-//
-//
-//        Stream<Map<String, String>> vmsBelongToSameBizGroups = groups.stream()
-//                .filter(g -> g.get("name").startsWith("[BIZ]"))
-//                .map(g -> g.get("id"))
-//                .map(filter -> findHostsGivenGroups(filter))
-//                .flatMap(h -> h.stream());
-//
-//        Stream<Map<String, String>> allDatabases = findHostsGivenGroups(zabbixProfile.getDbGroupId()).stream();
-//
-//        List<Map<String, String>> vms = concat(vmsBelongToSameBizGroups, allDatabases).collect(toList());
-//
-//        return vms.stream().filter(i -> Collections.frequency(vms, i) > 1);
-//    }
-//
-//    private List<Map<String, String>> findHostsGivenGroups(String filter) {
-//        ZabbixApi zabbixApi = getZabbixApi();
-//
-//
-//        Request getRequest = RequestBuilder.newBuilder()
-//                .method("host.get").paramEntry("groupids", filter)
-//                .build();
-//        JSONObject getResponse = zabbixApi.call(getRequest);
-//
-//        return getResponse.getJSONArray("result")
-//                .stream()
-//                .map(h -> (JSONObject) h)
-//                .map(h -> new HashMap<String, String>() {
-//                    {
-//                        put("id", h.getString("hostid"));
-//                        put("name", h.getString("name"));
-//                    }
-//                })
-//                .collect(toList());
-//    }
-
-
 
 }
