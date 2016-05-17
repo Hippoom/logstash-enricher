@@ -19,16 +19,12 @@ import org.springframework.context.annotation.Configuration;
 import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static com.jayway.jsonpath.Criteria.where;
 import static com.jayway.jsonpath.Filter.filter;
 import static java.lang.String.format;
-import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
 @Configuration
@@ -53,6 +49,7 @@ public class AnsibleConfiguration implements ApplicationContextAware {
         String[] dumps = directory.list();
 
         Stream<Map> applicationLevelEntityStream = Arrays.stream(dumps)
+                .filter(d -> !d.startsWith("."))
                 .map(d -> {
                     try {
                         return applicationContext.getResource(format("%s/%s", hostVarsDumpPath, d)).getURL();
@@ -86,17 +83,52 @@ public class AnsibleConfiguration implements ApplicationContextAware {
                                 entity.put("id", e);
                                 entity.put("host", vm);
                                 entity.put("text", format("%s:%s", e, vm));
-                                entity.put("type", "app");
-                                entity.put("dependsOn", asList(vm));
+                                entity.put("type", e.split("_")[0]);
+                                entity.put("dependsOn", new ArrayList<String>() {
+                                    {
+                                        add(vm);
+                                    }
+                                });
                                 List<JSONObject> groups = monitoredGroupRepository.findGroupsByHostName(vm);
-                                entity.put("groups", groups);
+                                entity.put("groups", groups.stream().map(g -> (String) g.get("name")).collect(toList()));
                                 return entity;
                             });
                 })
                 .flatMap(e -> e);
 
 
-        monitoredEntityRepository.saveOrUpdate(applicationLevelEntityStream.collect(toList()));
+        List<Map> entities = applicationLevelEntityStream.collect(toList());
+
+        List<Map> databases = entities.stream()
+                .filter(app -> app.get("type").equals("db"))
+                .collect(toList());
+
+
+        Stream<Map> appStream = entities.stream()
+                //.filter(app -> app.get("type").equals("app"))
+                .map(e -> {
+                    List<String> groups = (List<String>) e.get("groups");
+                    List<String> dependsOn = (List<String>) e.get("dependsOn");
+
+                    List<String> dbBelongToSameBizGroup = groups.stream()
+                            .filter(g -> g.startsWith("[BIZ]"))
+                            .map(g -> {
+                                return databases.stream()
+                                        .filter(db -> {
+                                            List<String> groups1 = (List<String>) db.get("groups");
+                                            return groups1.contains(g);
+                                        })
+                                        .map(db -> (String) db.get("id")).collect(toList());
+                            })
+                            .flatMap(db -> db.stream())
+                            .collect(toList());
+
+                    dependsOn.addAll(dbBelongToSameBizGroup);
+                    return e;
+                });
+
+
+        monitoredEntityRepository.saveOrUpdate(appStream.collect(toList()));
     }
 
 

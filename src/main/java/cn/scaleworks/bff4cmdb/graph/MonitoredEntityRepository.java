@@ -39,7 +39,7 @@ public class MonitoredEntityRepository {
                     object.put("id", e.get("id"));
                     object.put("host", e.get("host"));
                     object.put("text", e.get("text"));
-                    object.put("app", e.get("app"));
+                    object.put("type", e.get("type"));
                     object.put("dependsOn", e.get("dependsOn"));
                     object.put("groups", e.get("groups"));
                     return object;
