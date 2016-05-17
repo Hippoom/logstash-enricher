@@ -1,6 +1,7 @@
 package cn.scaleworks.bff4cmdb.ansible;
 
 import cn.scaleworks.bff4cmdb.graph.MonitoredEntity;
+import cn.scaleworks.bff4cmdb.graph.MonitoredEntityLoader;
 import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
 import cn.scaleworks.bff4cmdb.graph.MonitoredGroupRepository;
 import com.alibaba.fastjson.JSONObject;
@@ -35,20 +36,31 @@ import static java.util.stream.Collectors.toSet;
 @ConfigurationProperties("ansible")
 @Data
 @Slf4j
-public class AnsibleConfiguration implements ApplicationContextAware {
+public class AnsibleConfiguration implements ApplicationContextAware, MonitoredEntityLoader {
 
     private String hostVarsDumpPath;
+
+
+    @Autowired
+    private MonitoredGroupRepository monitoredGroupRepository;
 
     @Autowired
     private MonitoredEntityRepository monitoredEntityRepository;
 
-    @Autowired
-    private MonitoredGroupRepository monitoredGroupRepository;
     private ApplicationContext applicationContext;
 
     @PostConstruct
-    protected void populateApplicationLevelEntities() throws IOException {
-        File directory = applicationContext.getResource(hostVarsDumpPath).getFile();
+    protected void register() {
+        monitoredEntityRepository.register(this);
+    }
+
+    private void populateApplicationLevelEntities(MonitoredEntityRepository monitoredEntityRepository) {
+        File directory = null;
+        try {
+            directory = applicationContext.getResource(hostVarsDumpPath).getFile();
+        } catch (IOException e) {
+            throw new IllegalArgumentException(format("Cannot load ansible dump from %s", hostVarsDumpPath));
+        }
 
         String[] dumps = directory.list();
 
@@ -127,12 +139,22 @@ public class AnsibleConfiguration implements ApplicationContextAware {
                 });
 
 
-        monitoredEntityRepository.saveOrUpdate(appStream.collect(toList()));
+        monitoredEntityRepository.savePending(appStream.collect(toList()));
     }
 
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
+    }
+
+    @Override
+    public void populate(MonitoredEntityRepository monitoredEntityRepository) {
+        populateApplicationLevelEntities(monitoredEntityRepository);
+    }
+
+    @Override
+    public int getOrder() {
+        return 0;
     }
 }

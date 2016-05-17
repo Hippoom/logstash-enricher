@@ -18,10 +18,10 @@ public class PopulateMonitoredEntityRepositoryFromFile {
 
     private Map<String, MonitoredEntity> entities;
 
-    @Bean
-    protected MonitoredEntityRepository monitoredEntityRepository() {
-        MonitoredEntityRepository monitoredEntityRepository = new MonitoredEntityRepository();
-        monitoredEntityRepository.setEntities(entities);
-        return monitoredEntityRepository;
-    }
+//    @Bean
+//    protected MonitoredEntityRepository monitoredEntityRepository() {
+//        MonitoredEntityRepository monitoredEntityRepository = new MonitoredEntityRepository();
+//        monitoredEntityRepository.savePending(entities);
+//        return monitoredEntityRepository;
+//    }
 }
