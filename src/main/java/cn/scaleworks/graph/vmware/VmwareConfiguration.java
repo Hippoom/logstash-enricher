@@ -1,6 +1,6 @@
-package cn.scaleworks.bff4cmdb.vmware;
+package cn.scaleworks.graph.vmware;
 
-import cn.scaleworks.bff4cmdb.graph.MonitoredGroupRepository;
+import cn.scaleworks.graph.core.MonitoredGroupRepository;
 import com.vmware.vim25.mo.Folder;
 import com.vmware.vim25.mo.InventoryNavigator;
 import com.vmware.vim25.mo.ServiceInstance;
@@ -12,7 +12,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.rmi.RemoteException;

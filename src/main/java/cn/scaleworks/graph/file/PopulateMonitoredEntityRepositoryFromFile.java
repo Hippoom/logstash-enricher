@@ -1,11 +1,9 @@
-package cn.scaleworks.bff4cmdb.file;
+package cn.scaleworks.graph.file;
 
-import cn.scaleworks.bff4cmdb.graph.MonitoredEntity;
-import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
+import cn.scaleworks.graph.core.MonitoredEntity;
 import lombok.Data;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Map;

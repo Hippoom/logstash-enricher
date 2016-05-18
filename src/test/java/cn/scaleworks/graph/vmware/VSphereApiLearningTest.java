@@ -1,6 +1,5 @@
-package cn.scaleworks.bff4cmdb.vmware;
+package cn.scaleworks.graph.vmware;
 
-import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.mo.*;
 import org.junit.Test;
 

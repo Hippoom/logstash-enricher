@@ -1,4 +1,4 @@
-package cn.scaleworks.bff4cmdb.graph;
+package cn.scaleworks.graph.core;
 
 import com.alibaba.fastjson.JSONObject;
 

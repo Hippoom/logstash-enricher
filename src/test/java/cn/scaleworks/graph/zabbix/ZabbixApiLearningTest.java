@@ -1,4 +1,4 @@
-package cn.scaleworks.bff4cmdb.zabbix;
+package cn.scaleworks.graph.zabbix;
 
 import com.alibaba.fastjson.JSONObject;
 import io.github.hengyunabc.zabbix.api.DefaultZabbixApi;

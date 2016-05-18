@@ -1,8 +1,7 @@
-package cn.scaleworks.bff4cmdb.ansible;
+package cn.scaleworks.graph.ansible;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
-import com.jayway.jsonpath.Filter;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.Test;
 

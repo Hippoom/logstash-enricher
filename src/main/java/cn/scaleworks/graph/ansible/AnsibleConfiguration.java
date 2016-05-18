@@ -1,9 +1,9 @@
-package cn.scaleworks.bff4cmdb.ansible;
+package cn.scaleworks.graph.ansible;
 
-import cn.scaleworks.bff4cmdb.graph.MonitoredEntity;
-import cn.scaleworks.bff4cmdb.graph.MonitoredEntityLoader;
-import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
-import cn.scaleworks.bff4cmdb.graph.MonitoredGroupRepository;
+import cn.scaleworks.graph.core.MonitoredEntity;
+import cn.scaleworks.graph.core.MonitoredEntityLoader;
+import cn.scaleworks.graph.core.MonitoredEntityRepository;
+import cn.scaleworks.graph.core.MonitoredGroupRepository;
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;

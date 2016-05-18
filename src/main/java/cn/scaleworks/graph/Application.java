@@ -1,4 +1,4 @@
-package cn.scaleworks.bff4cmdb;
+package cn.scaleworks.graph;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

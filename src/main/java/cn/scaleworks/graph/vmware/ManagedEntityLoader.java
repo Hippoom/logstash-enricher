@@ -1,10 +1,10 @@
-package cn.scaleworks.bff4cmdb.vmware;
+package cn.scaleworks.graph.vmware;
 
 
-import cn.scaleworks.bff4cmdb.graph.MonitoredEntity;
-import cn.scaleworks.bff4cmdb.graph.MonitoredEntityLoader;
-import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
-import cn.scaleworks.bff4cmdb.graph.MonitoredGroupRepository;
+import cn.scaleworks.graph.core.MonitoredEntity;
+import cn.scaleworks.graph.core.MonitoredEntityLoader;
+import cn.scaleworks.graph.core.MonitoredEntityRepository;
+import cn.scaleworks.graph.core.MonitoredGroupRepository;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.mo.Datastore;
 import com.vmware.vim25.mo.HostSystem;

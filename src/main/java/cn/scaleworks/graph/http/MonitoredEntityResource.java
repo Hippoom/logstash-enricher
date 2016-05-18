@@ -1,7 +1,7 @@
-package cn.scaleworks.bff4cmdb.http;
+package cn.scaleworks.graph.http;
 
-import cn.scaleworks.bff4cmdb.graph.MonitoredEntity;
-import cn.scaleworks.bff4cmdb.graph.MonitoredEntityRepository;
+import cn.scaleworks.graph.core.MonitoredEntity;
+import cn.scaleworks.graph.core.MonitoredEntityRepository;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,8 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 

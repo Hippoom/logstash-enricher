@@ -1,6 +1,6 @@
-package cn.scaleworks.bff4cmdb.zabbix;
+package cn.scaleworks.graph.zabbix;
 
-import cn.scaleworks.bff4cmdb.graph.MonitoredGroupRepository;
+import cn.scaleworks.graph.core.MonitoredGroupRepository;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.github.hengyunabc.zabbix.api.DefaultZabbixApi;
