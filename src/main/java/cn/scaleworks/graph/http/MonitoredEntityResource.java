@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
 
@@ -41,7 +40,7 @@ public class MonitoredEntityResource {
                 .collect(toList()));
 
         List<JSONObject> links = entities.entrySet().stream()
-                .map(e -> ((Set<String>) e.getValue().getDependsOn()).stream()
+                .map(e -> e.getValue().getDependsOn().stream()
                         .map(d -> {
                             JSONObject link = new JSONObject();
                             link.put("source", e.getKey());
