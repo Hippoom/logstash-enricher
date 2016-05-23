@@ -22,7 +22,8 @@ public class MonitoredEntityRepository {
         return entities;
     }
 
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(initialDelayString = "${scheduler.monitored.entity.refresh.initial.delay.seconds:15}000",
+               fixedDelayString = "${scheduler.monitored.entity.refresh.fixed.delay.seconds:900}000")
     protected void reload() {
         this.loaders.sort((l1, l2) -> l1.getOrder() - l2.getOrder());
         this.toBeProcessing.clear();
