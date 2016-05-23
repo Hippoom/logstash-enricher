@@ -1,0 +1,35 @@
+file:
+  enabled: true
+  entities:
+    - id: petclinic-tomcat-1
+      text: petclinic-tomcat-1:192.168.11.145
+      type: mw
+      dependsOn:
+        - petclinic-vm-1
+    - id: petclinic-tomcat-2
+      text: petclinic-tomcat-2:192.168.11.145
+      type: mw
+      dependsOn:
+        - petclinic-vm-1
+    - id: petclinic-vm-1
+      text: petclinic-vm-1:192.168.11.145
+      type: vm
+      dependsOn:
+        - vh-1
+        - ds-1
+    - id: vh-1
+      text: vh-1:192.168.11.122
+      type: vh
+      dependsOn:
+        - ds-1
+    - id: ds-1
+      text: ds-1
+      type: ds
+
+logging:
+  level:
+    cn.scaleworks.graph: debug
+
+
+
+

@@ -13,17 +13,16 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static com.jayway.jsonpath.Criteria.where;
@@ -33,6 +32,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 @Configuration
+@ConditionalOnProperty("vmware.enabled")
 @ConfigurationProperties("ansible")
 @Data
 @Slf4j
@@ -48,11 +48,6 @@ public class AnsibleConfiguration implements ApplicationContextAware, MonitoredE
     private MonitoredEntityRepository monitoredEntityRepository;
 
     private ApplicationContext applicationContext;
-
-    @PostConstruct
-    protected void register() {
-        monitoredEntityRepository.register(this);
-    }
 
     private void populateApplicationLevelEntities(MonitoredEntityRepository monitoredEntityRepository) {
         File directory = null;
@@ -119,8 +114,8 @@ public class AnsibleConfiguration implements ApplicationContextAware, MonitoredE
         Stream<MonitoredEntity> appStream = entities.stream()
                 //.filter(app -> app.get("type").equals("app"))
                 .map(e -> {
-                    Set<String> groups = e.getGroups();
-                    Set<String> dependsOn = e.getDependsOn();
+                    List<String> groups = e.getGroups();
+                    List<String> dependsOn = e.getDependsOn();
 
                     List<String> dbBelongToSameBizGroup = groups.stream()
                             .filter(g -> g.startsWith("[BIZ]"))

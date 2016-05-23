@@ -1,17 +1,22 @@
 package cn.scaleworks.graph.core;
 
-import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
 
+@Slf4j
 @Component
 public class MonitoredEntityRepository {
-    @Setter
+    @Autowired
     private List<MonitoredEntityLoader> loaders = new ArrayList<>();
 
     private Map<String, MonitoredEntity> entities = new HashMap();
@@ -25,6 +30,7 @@ public class MonitoredEntityRepository {
     @Scheduled(initialDelayString = "${scheduler.monitored.entity.refresh.initial.delay.seconds:15}000",
                fixedDelayString = "${scheduler.monitored.entity.refresh.fixed.delay.seconds:900}000")
     protected void reload() {
+        log.debug("Begin to reload monitored entities with {}", loaders);
         this.loaders.sort((l1, l2) -> l1.getOrder() - l2.getOrder());
         this.toBeProcessing.clear();
 
@@ -36,7 +42,7 @@ public class MonitoredEntityRepository {
 
             Stream<String> upstreams = toBeProcessing.values().stream()
                     .filter(e -> {
-                        Set<String> dependsOn = e.getDependsOn();
+                        List<String> dependsOn = e.getDependsOn();
                         return dependsOn.stream()
                                 .filter(n -> n.equals(pending.getId())).count() > 0;
                     })
@@ -44,7 +50,7 @@ public class MonitoredEntityRepository {
             pending.markAsDependencyOf(upstreams.collect(toSet()));
         }
         this.entities = toBeProcessing;
-
+        log.debug("Finish to reload monitored entities");
     }
 
     public MonitoredEntity findById(String id) {

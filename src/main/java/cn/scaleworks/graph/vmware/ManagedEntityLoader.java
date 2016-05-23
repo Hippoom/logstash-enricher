@@ -15,7 +15,6 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.annotation.PostConstruct;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
@@ -163,10 +162,4 @@ public class ManagedEntityLoader implements MonitoredEntityLoader {
     private Optional<HostSystem> getHostSystemBy(ManagedObjectReference hostRef, List<HostSystem> hostSystems) {
         return hostSystems.stream().filter(h -> h.getMOR().getVal().equals(hostRef.getVal())).findFirst();
     }
-
-    @PostConstruct
-    protected void register() {
-        monitoredEntityRepository.register(this);
-    }
-
 }
