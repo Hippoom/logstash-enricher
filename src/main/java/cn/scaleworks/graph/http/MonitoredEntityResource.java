@@ -5,6 +5,7 @@ import cn.scaleworks.graph.core.MonitoredEntityRepository;
 import cn.scaleworks.graph.core.MonitoredGroupRepository;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,8 +33,14 @@ public class MonitoredEntityResource {
     }
 
     @RequestMapping(value = "/_search")
-    protected MonitoredEntity search(@RequestParam String id) {
-        return monitoredEntityRepository.findById(id);
+    protected MonitoredEntity search(@RequestParam(name = "id", required = false) String id,
+                                     @RequestParam(name = "vendorSpecificId", required = false) String vendorSpecificId) {
+        if (StringUtils.isNotBlank(id)) {
+            return monitoredEntityRepository.findById(id);
+        } else if (StringUtils.isNotBlank(vendorSpecificId)) {
+            return monitoredEntityRepository.findByVendorSpecificId(vendorSpecificId);
+        }
+        return null;
     }
 
     @RequestMapping(value = "/_graph")

@@ -85,7 +85,7 @@ public class AnsibleConfiguration implements ApplicationContextAware, MonitoredE
                             where("filebeat_config").exists(true));
 
                     String vm = JsonPath.read(json, "$.inventory_hostname");
-                    List<String> entities = JsonPath.read(json, "$.filebeat_config.filebeat.prospectors[*].document_type", hasFilebeatConfig);
+                    List<String> entities = JsonPath.read(json, "$.filebeat_config.filebeat.prospectors[*].fields.object_id", hasFilebeatConfig);
 
 
                     return entities.stream()

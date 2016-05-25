@@ -4,6 +4,7 @@ import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
@@ -22,12 +23,17 @@ public class MonitoredEntity {
     private List<String> dependsOn = new ArrayList<>();
     private List<String> dependencyOf = new ArrayList<>();
     private List<String> groups = new ArrayList<>();
+    private Optional<String> vendorSpecificId = Optional.empty();
 
     public MonitoredEntity(String id, String host, String type, String text) {
         this.id = id;
         this.host = host;
         this.type = type;
         this.text = text;
+    }
+
+    public void assignVendorSpecificId(String id) {
+        this.vendorSpecificId = Optional.ofNullable(id);
     }
 
     public void markAsDependencyOf(Set<String> ids) {

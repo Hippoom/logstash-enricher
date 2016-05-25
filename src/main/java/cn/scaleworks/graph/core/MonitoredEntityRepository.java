@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 @Slf4j
@@ -20,6 +21,8 @@ public class MonitoredEntityRepository {
     private List<MonitoredEntityLoader> loaders = new ArrayList<>();
 
     private Map<String, MonitoredEntity> entities = new HashMap();
+
+    private Map<String, MonitoredEntity> entitiesWithVendorSpecificIdAsKey = new HashMap();
 
     private Map<String, MonitoredEntity> toBeProcessing = new HashMap<>();
 
@@ -50,6 +53,16 @@ public class MonitoredEntityRepository {
             pending.markAsDependencyOf(upstreams.collect(toSet()));
         }
         this.entities = toBeProcessing;
+
+
+        this.entitiesWithVendorSpecificIdAsKey = toBeProcessing.values().stream()
+                .filter(monitoredEntity -> monitoredEntity.getVendorSpecificId().isPresent())
+                .collect(
+                        toMap(
+                                monitoredEntity -> monitoredEntity.getVendorSpecificId().get(),
+                                monitoredEntity -> monitoredEntity
+                             )
+                        );
         log.debug("Finish to reload monitored entities");
     }
 
@@ -66,5 +79,9 @@ public class MonitoredEntityRepository {
 
     public void register(MonitoredEntityLoader loader) {
         this.loaders.add(loader);
+    }
+
+    public MonitoredEntity findByVendorSpecificId(String vendorSpecificId) {
+        return entitiesWithVendorSpecificIdAsKey.get(vendorSpecificId);
     }
 }

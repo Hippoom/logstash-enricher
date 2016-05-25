@@ -81,9 +81,10 @@ public class ManagedEntityLoader implements MonitoredEntityLoader {
                     String id = v.getGuest().getHostName();
                     String host = id;
                     String text = format("%s:%s", id, v.getGuest().getIpAddress());
+                    String vendorSpecificId = v.getMOR().getVal();
 
                     MonitoredEntity virtualMachine = new MonitoredEntity(id, host, "vm", text);
-
+                    virtualMachine.assignVendorSpecificId(vendorSpecificId);
                     Set<String> dependsOn = getDsStream(v)
                             .map(d -> d.getName())
                             .collect(toSet());
@@ -101,8 +102,10 @@ public class ManagedEntityLoader implements MonitoredEntityLoader {
                     String id = h.getName();
                     String host = id;
                     String text = id;
+                    String vendorSpecificId = h.getMOR().getVal();
 
                     MonitoredEntity hostSystem = new MonitoredEntity(id, host, "vh", text);
+                    hostSystem.assignVendorSpecificId(vendorSpecificId);
                     hostSystem.assignDependencies(getDsStream(h)
                             .map(d -> d.getName())
                             .collect(toSet()));
@@ -115,8 +118,10 @@ public class ManagedEntityLoader implements MonitoredEntityLoader {
                     String id = ds.getName();
                     String host = id;
                     String text = id;
+                    String vendorSpecificId = ds.getMOR().getVal();
 
                     MonitoredEntity datastore = new MonitoredEntity(id, host, "ds", text);
+                    datastore.assignVendorSpecificId(vendorSpecificId);
                     // usually datastore does not have dependencies
                     // usually we don't categorize vh into groups
                     return datastore;

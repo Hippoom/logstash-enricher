@@ -29,7 +29,7 @@ public class AnsibleVarsLearningTest {
 //                where("filebeat_config").exists(true));
 
         String vm = JsonPath.read(text, "$.inventory_hostname");
-        List<String> entities = JsonPath.read(text, "$.filebeat_config.filebeat.prospectors[*].document_type");
+        List<String> entities = JsonPath.read(text, "$.filebeat_config.filebeat.prospectors[*].fields.object_id");
 
         System.out.println(vm);
 

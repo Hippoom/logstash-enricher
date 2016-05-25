@@ -1,63 +1,20 @@
 {
-  "ansible_ssh_host": "192.168.11.122",
-  "ansible_ssh_pass": 123456,
-  "ansible_ssh_user": "root",
-  "ansible_version": {
-    "full": "2.0.1.0",
-    "major": 2,
-    "minor": 0,
-    "revision": 1,
-    "string": "2.0.1.0"
-  },
   "filebeat_config": {
     "filebeat": {
       "prospectors": [
         {
-          "document_type": "zabbix_server_vm2",
+          "document_type": "zabbix_server",
           "input_type": "log",
           "paths": [
             "/var/log/zabbix/zabbix_server*.log"
-          ]
-        },
-        {
-          "document_type": "zabbix_agent_vm2",
-          "input_type": "log",
-          "paths": [
-            "/var/log/zabbix/zabbix_agentd*.log"
-          ]
+          ],
+          "fields": {
+            "object_id": "zabbix_server_1",
+            "role": "app"
+          }
         }
       ]
-    },
-    "logging": {
-      "level": "error",
-      "to_syslog": true
-    },
-    "output": {
-      "file": {
-        "filename": "filebeat",
-        "path": "/tmp/filebeat"
-      }
     }
   },
-  "group_names": [
-    "swa-monitored-hosts"
-  ],
-  "groups": {
-    "all": [
-      "localhost",
-      "vm2"
-    ],
-    "swa-monitored-hosts": [
-      "vm2"
-    ],
-    "ungrouped": [
-      "localhost"
-    ]
-  },
-  "inventory_dir": "/Users/twer/Workspace/elk/playbooks/profiles/office",
-  "inventory_file": "playbooks/profiles/office/hosts",
-  "inventory_hostname": "vm2",
-  "inventory_hostname_short": "vm2",
-  "omit": "__omit_place_holder__f607a78c7018d5373ab7196780289b104dddbe77",
-  "playbook_dir": "/Users/twer/Workspace/elk/playbooks"
+  "inventory_hostname": "vm2"
 }
