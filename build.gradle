@@ -58,6 +58,7 @@ dependencies {
 
     // frontend
     compile "org.webjars:jquery:2.1.1"
+    compile "org.webjars:d3js:3.5.16"
     compile "org.webjars:webjars-locator"
 
     // test
@@ -89,8 +90,9 @@ jar {
 }
 
 test {
-    exclude 'com/restbucks/**/smoke/*'
-    exclude 'com/restbucks/**/feature/*'
+    exclude '**/smoke/*'
+    exclude '**/feature/*'
+    exclude '**/*LearningTest*'
 
     testLogging {
         events "passed", "skipped", "failed", "standardOut", "standardError"
