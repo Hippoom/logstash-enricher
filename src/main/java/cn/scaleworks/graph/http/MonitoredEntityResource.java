@@ -2,6 +2,7 @@ package cn.scaleworks.graph.http;
 
 import cn.scaleworks.graph.core.MonitoredEntity;
 import cn.scaleworks.graph.core.MonitoredEntityRepository;
+import cn.scaleworks.graph.core.MonitoredGroupRepository;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,14 @@ public class MonitoredEntityResource {
     @Autowired
     private MonitoredEntityRepository monitoredEntityRepository;
 
+    @Autowired
+    private MonitoredGroupRepository monitoredGroupRepository;
+
+
+    @RequestMapping(value = "/_groups")
+    protected List<JSONObject> groups(@RequestParam String id) {
+        return monitoredGroupRepository.findGroupsByHostName(id);
+    }
 
     @RequestMapping(value = "/_search")
     protected MonitoredEntity search(@RequestParam String id) {

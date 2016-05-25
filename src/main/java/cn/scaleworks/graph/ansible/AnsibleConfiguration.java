@@ -32,7 +32,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 @Configuration
-@ConditionalOnProperty("vmware.enabled")
+@ConditionalOnProperty("ansible.enabled")
 @ConfigurationProperties("ansible")
 @Data
 @Slf4j
