@@ -1,16 +1,23 @@
-FROM java:8-jdk-alpine
+FROM java:8
 
-COPY build/version build/libs/*.jar /opt/scaleworks/graph/
+## image for test
+
+ENV TEST_HOME /opt/scaleworks/graph
+
+COPY gradlew build.gradle settings.gradle $TEST_HOME/
+COPY gradle $TEST_HOME/gradle
+COPY build/classes $TEST_HOME/build/classes
+COPY build/resources $TEST_HOME/build/resources
 
 # Define mountable directories
-VOLUME /opt/scaleworks/graph/config
-VOLUME /opt/scaleworks/graph/logs
+VOLUME $TEST_HOME/config
+VOLUME $TEST_HOME/logs
+VOLUME $TEST_HOME/build/reports
 
-WORKDIR /opt/scaleworks/graph
+WORKDIR $TEST_HOME
 
-CMD java -jar scaleworks-graph.jar
+ENTRYPOINT ["./gradlew"]
 
-EXPOSE 8080
 
 
 

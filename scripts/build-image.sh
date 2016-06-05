@@ -5,4 +5,6 @@ script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 version=$(cat "$project_home"/build/version)
 
-docker build -t "$main_image:$version" -f "$project_home"/Dockerfile "$project_home"
+cp "$project_home/src/main/docker/Dockerfile" "$project_home/build/Dockerfile.main"
+
+docker build -t "$main_image:$version" -f "$project_home"/build/Dockerfile.main "$project_home/build"

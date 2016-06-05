@@ -2,3 +2,6 @@ spring:
   resources:
     chain:
       enabled: true
+
+file:
+  enabled: true

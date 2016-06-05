@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -20,7 +21,7 @@ import static java.util.stream.Collectors.toList;
 @Data//otherwise we cannot get properties injected
 public class FileMonitoredEntityLoader implements MonitoredEntityLoader, MonitoredGroupRepository {
 
-    private List<MonitoredEntity> entities;
+    private List<MonitoredEntity> entities = new ArrayList<>();
 
     @Override
     public void populate(MonitoredEntityRepository monitoredEntityRepository) {
