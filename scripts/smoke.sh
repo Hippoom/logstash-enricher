@@ -7,10 +7,11 @@ profile=$1
 version=$2
 
 
-docker run --rm \
+docker run \
            --name $profile-scaleworks-graph-test \
            -t \
            -v "$user_home"/.gradle:/root/.gradle \
+           -v "$project_home"/build/reports:/project/build/reports \
            --link $profile-scaleworks-graph:app \
            $test_image:$version \
            smokeTest --no-daemon

@@ -2,7 +2,7 @@ FROM java:8
 
 ## image for test
 
-ENV TEST_HOME /opt/scaleworks/graph
+ENV TEST_HOME /project
 
 COPY gradlew build.gradle settings.gradle $TEST_HOME/
 COPY gradle $TEST_HOME/gradle
