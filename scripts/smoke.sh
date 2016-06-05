@@ -9,7 +9,7 @@ version=$2
 
 docker run --rm \
            --name $profile-scaleworks-graph-test \
-           -it \
+           -t \
            -v "$user_home"/.gradle:/root/.gradle \
            --link $profile-scaleworks-graph:app \
            $test_image:$version \
